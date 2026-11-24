@@ -51,10 +51,11 @@ class Folder(unittest.TestCase):
         self.assertEqual(found.raw, {"L-stored": "north-web evt_1: New\u2028and more"})
 
     def test_20_a_file_that_has_changed(self):
-        for name in ("entries.jsonl", "missing.json", "raw.jsonl"):
+        # What stands there then could be read as well. Only the fingerprint says that it is something else.
+        for name, other in {"entries.jsonl": lines(*map(as_line, ENDED[:-1])), "missing.json": "[]", "raw.jsonl": lines({"id": "L-stored", "text": "something else"})}.items():
             with self.subTest(name=name):
                 before = (self.folder / name).read_bytes()
-                (self.folder / name).write_bytes(before + b"\n")
+                self.write(name, other)
                 self.broken(f"{name} has changed")
                 (self.folder / name).write_bytes(before)
 

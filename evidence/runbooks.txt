@@ -1,3 +1,3 @@
 # The runbooks that the agent may propose: one name a line. It can do nothing else than propose one, and nothing here carries it out.
 #
-# The names stand here, and the text of each in runbooks/NAME.md. So far there is none.
+# The names stand here, and the text of each in runbooks/NAME.md, drafted by Claude and corrected by the owner. So far there is none.

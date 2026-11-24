@@ -217,13 +217,14 @@ class Reading(unittest.TestCase):
 
     def test_08_lines_that_cannot_be_read(self):
         for line, why in {
-            "disk full=yes say full": "needs a source", "process": "at least one field", "process exit say exit": "not a field and a value",
+            "disk what=done say what": "needs a source", "process": "at least one field", "no process": "at least one field", "process exit say exit": "not a field and a value",
             "process exit=137": "has to be said", "process exit=137 say": "one list of fields", "process exit=137 say exit kind": "one list of fields",
             "process exit=137 say kind": "has to be said", "process exit=gone say exit": "not a whole number", "process colour=$c say colour": "has no colour",
             "process exit=137 exit=1 say exit": "not a field and a value", "no process exit=137 say exit": "belong to an entry", "then no process exit=137": "belong to an entry", "no process exit=1|2": "belong to an entry", "2+ process exit=1|2": "belong to an entry", "process exit=1|gone say exit": "not a whole number",
             "1+ process exit=137": "needs a source", "2+ process exit=137 say exit": "belong to an entry", "then": "needs a source", "no": "needs a source", "2+": "needs a source",
         }.items():
-            self.broken(WORKER + f"  {line}\n", why)
+            # Below a line that is right, so that nothing else is wrong.
+            self.broken(WORKER + f"  process exit=0 say exit\n  {line}\n", why)
 
     def test_08_lines_that_do_not_go_together(self):
         self.broken(WORKER + "  no log what=done\n", "only on what is not there")

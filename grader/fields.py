@@ -88,7 +88,7 @@ FIELDS = {
         "attempts": NUMBER, "deliveries": NUMBER, "reason": REASON, "overdue": YES_NO, "length": NUMBER, "text": YES_NO, "order": ORDER,
         "item": ITEM, "quantity": NUMBER, "cents": NUMBER, "orders": NUMBER,
     },
-    "series": {"name": one_of("waiting", "working", "done", "aside", "database_answers", "waits_for_a_lock"), "value": NUMBER},
+    "series": {"name": one_of("waiting", "working", "done", "aside", "database_answers", "waits_for_a_lock", "waits_for_a_standby"), "value": NUMBER},
     # An exit that is empty means that it still ran at the end.
     "process": {"process": PROCESS, "kind": one_of("api", "worker"), "exit": NUMBER},
 }

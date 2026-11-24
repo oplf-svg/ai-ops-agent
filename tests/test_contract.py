@@ -15,6 +15,7 @@ PAGE = (ROOT / "docs" / "contract.md").read_text(encoding="utf-8")
 CAUSES = (ROOT / "evidence" / "causes.txt").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 NOTICE = (ROOT / "NOTICE").read_text(encoding="utf-8")
+RUNBOOKS = (ROOT / "evidence" / "runbooks.txt").read_text(encoding="utf-8")
 
 
 class Page(unittest.TestCase):
@@ -23,7 +24,7 @@ class Page(unittest.TestCase):
         rows = {int(number) for number in re.findall(r"^\| (\d+) \|", PAGE, re.MULTILINE)}
         self.assertEqual(rows, {int(number) for number in re.findall(r"def test_(\d\d)_", tests)})
         # What is not built yet has a star and no test.
-        self.assertEqual(sorted(rows), list(range(1, 29)))
+        self.assertEqual(sorted(rows), list(range(1, 39)))
 
     def test_the_fields_of_each_source(self):
         for source, fields in FIELDS.items():
@@ -73,10 +74,18 @@ class WhoMadeThis(unittest.TestCase):
         self.assertNotRegex(text.lower(), "cannot approve|cannot merge|approve or merge|designed by|built by|reviewed by")
 
     def test_who_drafts_and_who_corrects_is_the_same_everywhere(self):
-        for text in (README, PAGE, CAUSES):
+        for text in (README, PAGE, CAUSES, RUNBOOKS):
             said = re.sub(r"[\s#]+", " ", text).lower()
             self.assertIn("drafted by claude and corrected by the owner", said)
             self.assertNotIn("written by a person", said)
+
+    def test_the_rule_for_two_causes_stands_where_it_is_needed(self):
+        for text in (README, PAGE):
+            self.assertIn("proposed by claude and decided by the owner", re.sub(r"\s+", " ", text).lower())
+        for text in (PAGE, CAUSES):
+            said = re.sub(r"[\s#]+", " ", text).lower()
+            self.assertIn("answer is the mistake in the program", said)
+            self.assertIn("the agent is told so", said)
 
     def test_the_licence_is_apache_2_letter_by_letter(self):
         self.assertEqual(hashlib.sha256((ROOT / "LICENSE").read_bytes()).hexdigest(), "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4")
