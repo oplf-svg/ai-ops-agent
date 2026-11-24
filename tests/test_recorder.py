@@ -145,8 +145,8 @@ class Written(unittest.TestCase):
         self.addCleanup(folder.cleanup)
         self.folder = pathlib.Path(folder.name) / "r1"
 
-    def write(self, noted=Wall.NOTED, names=("program-2",)):
-        return write(self.folder, noted, random.Random(1), "9ff662f", "here", 7, names, list(CAUSES))
+    def write(self, noted=Wall.NOTED, names=("program-2",), missing=()):
+        return write(self.folder, noted, random.Random(1), "9ff662f", "here", 7, names, list(CAUSES), missing)
 
     def test_30_what_was_noted_is_read_again_by_the_grader(self):
         meta, recording = self.write()
@@ -155,6 +155,10 @@ class Written(unittest.TestCase):
         self.assertEqual(list(recording.raw.values()), ['{"Message":"north-web evt_x: New"}'])
         self.assertEqual(recording.by_id[next(iter(recording.raw))].get("what"), "stored")
         self.assertRegex(meta, "^[0-9a-f]{64}$")
+
+    def test_36_what_could_not_be_seen_is_a_gap(self):
+        _, recording = self.write(missing=[("row", 0, 9)])
+        self.assertEqual((recording.missing, recording.has_gap("row"), recording.has_gap("log")), ((("row", 0, 9),), True, False))
 
     def test_30_the_ids_are_drawn_anew(self):
         _, one = self.write()
@@ -575,7 +579,8 @@ class Rows(unittest.TestCase):
         "conflicts": [("north-web", "evt_1", 1, b"abc")], "orders": [("north", "A-1", "north-web", "evt_3", "BOX-S", 2, 300)], "totals": [("north", 1, 300)]}
 
     def test_36_the_rows_of_all_tables(self):
-        found = rows(self.Connection(self.TABLES), lines.reason)
+        found, whole = rows(self.Connection(self.TABLES), lines.reason)
+        self.assertTrue(whole)
         self.assertEqual(found, [
             {"table": "inbox", "feed": "north-web", "event": "evt_1", "shop": "north", "state": "working", "attempts": 5, "deliveries": 1, "reason": None, "overdue": True, "length": 2, "text": True},
             {"table": "inbox", "feed": "north-web", "event": "evt_2", "shop": "north", "state": "aside", "attempts": 1, "deliveries": 2, "reason": "not_text", "overdue": None, "length": 2, "text": False},
@@ -591,8 +596,12 @@ class Rows(unittest.TestCase):
         self.assertEqual(sum(OVERDUE in sql for sql in connection.asked), 1)
 
     def test_36_a_table_that_is_not_there(self):
-        found = rows(self.Connection({"orders": self.TABLES["orders"], "totals": self.TABLES["totals"]}), lines.reason)
+        found, whole = rows(self.Connection({"orders": self.TABLES["orders"], "totals": self.TABLES["totals"]}), lines.reason)
         self.assertEqual([one["table"] for one in found], ["orders", "totals"])
+        # It is said, because nobody can know any more what was in the others.
+        self.assertFalse(whole)
+        for gone in ("inbox", "conflicts"):
+            self.assertFalse(rows(self.Connection({name: some for name, some in self.TABLES.items() if name != gone}), lines.reason)[1], gone)
 
 
 class Plan(unittest.TestCase):

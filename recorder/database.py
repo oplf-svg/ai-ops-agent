@@ -82,21 +82,22 @@ def _there(connection, table):
 
 
 def rows(connection, read_reason):
-    """All rows of one moment, so that no order is seen without what belongs to it."""
+    """All rows of one moment, so that no order is seen without what belongs to it. And whether every table could be read."""
     found = []
     with connection.transaction():
         connection.execute("set transaction isolation level repeatable read read only")
-        if _there(connection, "inbox"):
+        inbox, conflicts = _there(connection, "inbox"), _there(connection, "conflicts")
+        if inbox:
             for feed, event, shop, state, attempts, deliveries, reason, overdue, body in connection.execute(
                     f"select feed, event_id, shop, state, attempts, deliveries, reason, due_at < now() - {OVERDUE}, body from inbox order by feed, event_id").fetchall():
                 found.append({
                     "table": "inbox", "feed": feed, "event": event, "shop": shop, "state": state, "attempts": attempts, "deliveries": deliveries,
                     "reason": read_reason(reason)[0] if reason else None, "overdue": overdue if state in ("waiting", "working") else None, "length": len(body), "text": is_text(bytes(body))})
-        if _there(connection, "conflicts"):
+        if conflicts:
             for feed, event, deliveries, body in connection.execute("select feed, event_id, deliveries, body from conflicts order by feed, event_id").fetchall():
                 found.append({"table": "conflicts", "feed": feed, "event": event, "deliveries": deliveries, "length": len(body), "text": is_text(bytes(body))})
         for shop, number, feed, event, sku, quantity, cents in connection.execute("select shop, number, feed, event_id, sku, quantity, cents from orders order by shop, feed, number").fetchall():
             found.append({"table": "orders", "shop": shop, "order": number, "feed": feed, "event": event, "item": sku, "quantity": quantity, "cents": cents})
         for shop, orders, cents in connection.execute("select shop, orders, cents from totals order by shop").fetchall():
             found.append({"table": "totals", "shop": shop, "orders": orders, "cents": cents})
-    return found
+    return found, inbox and conflicts

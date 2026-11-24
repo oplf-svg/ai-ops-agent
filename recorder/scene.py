@@ -221,10 +221,10 @@ class Scene:
         self.sleep(0.7, 1.5)
 
     def close(self):
-        """The end of the recording: the rows, and how the programs stand."""
+        """The end of the recording: the rows, and how the programs stand. Returns what was noted, and what could not be seen."""
         self.shops.pause()
         with self.postgres.connect(self.database) as connection:
-            last = rows(connection, lines.reason)
+            last, whole = rows(connection, lines.reason)
         end = self.clock.now()
         self.no_problems()
         with self._lock:
@@ -234,7 +234,8 @@ class Scene:
             for program in self.programs:
                 ended = program.exit is not None
                 self._noted.append((program.end if ended else end, "process", {"process": program.name, "kind": program.kind, "exit": program.exit if ended else None}, None))
-            return list(self._noted)
+            # Of a table that is gone nobody can say any more that something was not in it.
+            return list(self._noted), [] if whole else [("row", 0, end)]
 
     def finish(self):
         self._frozen = True
