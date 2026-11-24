@@ -1,0 +1,58 @@
+name: record
+
+# Records the failures of webhook-platform anew: by hand, and on main only. No secret, no cloud and no model. What it does
+# stands in record.sh and not here, because agents may not change a workflow file. No other check needs it.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: record
+
+jobs:
+  record:
+    name: record (${{ matrix.part }})
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1/4, 2/4, 3/4, 4/4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Which commit is recorded stands in a file, and was approved with it.
+      - id: pinned
+        run: |
+          commit="$(cat webhook-platform.commit)"
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]]
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: oplf-svg/webhook-platform
+          ref: ${{ steps.pinned.outputs.commit }}
+          path: webhook-platform
+          fetch-depth: 0
+          persist-credentials: false
+      # A full id alone does not show where a commit is from: GitHub also finds those of a fork.
+      - run: git -C webhook-platform merge-base --is-ancestor "$COMMIT" origin/main
+        env:
+          COMMIT: ${{ steps.pinned.outputs.commit }}
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: webhook-platform/global.json
+      - run: bash .github/scripts/record.sh "$PART"
+        env:
+          PART: ${{ matrix.part }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: recordings-${{ strategy.job-index }}
+          path: build/recordings
+          if-no-files-found: ignore
+          retention-days: 30
