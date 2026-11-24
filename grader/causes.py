@@ -1,6 +1,6 @@
 """The table of causes: which ones there are, and what has to be shown before one of them may be named.
 
-The table is written by a person, in evidence/causes.txt. Each cause is one line, and below it stands what it needs:
+The table stands in evidence/causes.txt. Each cause is one line, and below it stands what it needs:
 
     kettle-boiled-dry: The kettle was on, and there was no water in it.
       process kind=worker exit=137 say exit

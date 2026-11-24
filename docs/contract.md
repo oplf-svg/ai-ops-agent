@@ -26,8 +26,8 @@ later.
 - A **run** is one try at one case by one model.
 - The **gate** is the code that decides whether an answer may go out. What does not pass goes out as "I don't know".
 - The **table** says which causes there are and what has to be shown before one of them may be named (`evidence/causes.txt`). What
-  has to be shown is written by a person and not by a model. A failure can be graded as soon as its own cause has its lines, and a
-  cause without lines is never let through.
+  has to be shown is drafted by Claude and corrected by the owner, and the model that is judged does not get it. A failure can be
+  graded as soon as its own cause has its lines, and a cause without lines is never let through.
 
 ## The recording
 

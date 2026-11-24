@@ -1,5 +1,7 @@
 # ai-ops-agent
 
+Part of the public portfolio of Luis Orozco. The other repositories stand at [github.com/oplf-svg](https://github.com/oplf-svg).
+
 An agent that looks into failures of [webhook-platform](https://github.com/oplf-svg/webhook-platform). It answers with evidence or
 says that it does not know, and it can only read. The company behind it is made up: no shop, customer or order in here is real.
 
@@ -17,7 +19,7 @@ None of them is shown yet. **What exists is the part that will judge the agent**
 |---|---|
 | [What it has to survive](docs/contract.md) | 28 things that can happen, and what must be true afterwards. Four more come later |
 | [The grader](grader) | Code without a model, a network or a package. It runs every claim of an answer again, and believes nothing that a model wrote |
-| [What a cause needs](evidence/causes.txt) | What has to be shown before a cause may be named. It is written by a person, and so far it is a form |
+| [What a cause needs](evidence/causes.txt) | What has to be shown before a cause may be named. Drafted by Claude and corrected by the owner, and so far it is a form |
 | [Tests that can fail](tests/wrong.py) | More than 300 mistakes that are easy to make, one at a time. The tests have to notice each of them, and each test has to be able to fail |
 
 The numbers of each run are on its summary page under [Actions](../../actions/workflows/ci.yml).
@@ -56,9 +58,11 @@ bash .github/scripts/tests.sh
 bash .github/scripts/wrong.sh
 ```
 
-## Who made what
+## Who made this
 
-The code, the tests and these texts were written by Claude, an AI agent, which works here under an identity of its own: it can
-propose a change, but it cannot approve or merge one. What a cause needs, and the runbooks, are for the owner to write, and so far
-they are empty. The word `never` below twenty causes is nobody's judgement: it has to follow from a check of the recordings that is
-still to come. The owner decides what is built and what is merged.
+Directed and approved by Luis Orozco. Code, tests and texts are written by Claude, an AI agent that proposes its changes under an
+identity of its own. What a cause needs is drafted by Claude and corrected by the owner, and each line that the owner wrote or changed
+is marked. So far it is an empty form, and so is the list of runbooks. The word `never` below twenty causes is nobody's judgement: it
+has to follow from a check of the recordings that is still to come.
+
+Licensed under the [Apache License 2.0](LICENSE), see also [NOTICE](NOTICE).

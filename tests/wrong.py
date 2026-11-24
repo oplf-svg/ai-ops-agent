@@ -439,7 +439,19 @@ def mistakes():
     wrong = of("README", ".", ".md")
     wrong("readme.other_number", "The first page promises another number of rows", "test_the_first_page_says_the_same", ("28 things that can happen", "30 things that can happen"))
     wrong("readme.dead_link", "A link of the first page leads nowhere", "test_the_links_of_the_first_page_lead_somewhere", ("(docs/contract.md)", "(docs/promises.md)"))
+    wrong("readme.nobodys", "The first page does not say whose it is", "test_the_first_page_says_whose_it_is", ("Part of the public portfolio of ", "By "))
+    wrong("readme.no_way_to_the_others", "The first page has no link to the other repositories", "test_the_first_page_says_whose_it_is", ("(https://github.com/oplf-svg)", "(https://github.com)"))
+    wrong("readme.other_words", "The first page says more of the owner than is shown", "test_the_first_page_says_who_made_what", ("Directed and approved by", "Designed and built by"))
+    wrong("readme.more_than_is_true", "The first page says more of the agent than is true", "test_the_first_page_says_who_made_what", ("identity of its own. What", "identity of its own. It cannot approve or merge one. What"))
+    wrong("readme.written_by_a_person", "The first page says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("What a cause needs is drafted by Claude and corrected by the owner, and", "What a cause needs is written by a person, and"))
+    wrong = of("contract", "docs", ".md")
+    wrong("contract.written_by_a_person", "The page says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("has to be shown is drafted by Claude and corrected by the owner", "has to be shown is written by a person"))
+    wrong = of("NOTICE", ".", "")
+    wrong("notice.other_name", "Two names stand in here", "test_the_first_page_says_whose_it_is", ("Copyright 2026 ", "Copyright 2026 Somebody Else and "))
+    wrong = of("LICENSE", ".", "")
+    wrong("licence.other_word", "One word of the licence is another one", "test_the_licence_is_apache_2_letter_by_letter", ("irrevocable\n      copyright license", "revocable\n      copyright license"))
     wrong = of("causes", "evidence", ".txt")
+    wrong("evidence.written_by_a_person", "The table says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("drafted by Claude and corrected by the owner", "written by a person"))
     wrong("evidence.one_cause_fewer", "A cause is missing in the table", "test_the_table_can_be_read", ("table-missing: A table is not there.\n", ""))
     wrong("evidence.example", "The example in the table cannot be read", "test_the_example_in_the_table_can_be_read", ("#     process kind=worker exit=137 say exit\n", "#     process kind=worker exit=137\n"))
     return found
@@ -448,7 +460,8 @@ def mistakes():
 def copy_to(folder):
     for name in ("grader", "tests", "docs", "evidence"):
         shutil.copytree(ROOT / name, folder / name, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copyfile(ROOT / "README.md", folder / "README.md")
+    for name in ("README.md", "LICENSE", "NOTICE"):
+        shutil.copyfile(ROOT / name, folder / name)
 
 
 def run_in(folder):

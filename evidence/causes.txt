@@ -1,8 +1,9 @@
 # What went wrong can be one of these, and nothing else. The agent gets the codes and the sentences. It does not get what stands
 # below them.
 #
-# WRITTEN BY A PERSON: below each cause stands what has to be shown before it may be named. A failure can be graded as soon as its own
-# cause has its lines. Numbers are published only when all of them have. The form, with a cause that is made up:
+# Below each cause stands what has to be shown before it may be named, drafted by Claude and corrected by the owner. "# owner" stands
+# above each line that the owner wrote or changed. So far it is an empty form. A failure can be graded as soon as its own cause has its
+# lines. Numbers are published only when all of them have. The form, with a cause that is made up:
 #
 #   kettle-boiled-dry: The kettle was on, and there was no water in it.
 #     process kind=worker exit=137 say exit

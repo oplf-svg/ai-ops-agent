@@ -1,5 +1,6 @@
 """That the page, the table and the code say the same."""
 
+import hashlib
 import pathlib
 import re
 import unittest
@@ -13,6 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 PAGE = (ROOT / "docs" / "contract.md").read_text(encoding="utf-8")
 CAUSES = (ROOT / "evidence" / "causes.txt").read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+NOTICE = (ROOT / "NOTICE").read_text(encoding="utf-8")
 
 
 class Page(unittest.TestCase):
@@ -48,6 +50,36 @@ class FirstPage(unittest.TestCase):
         self.assertGreater(len(links), 3)
         for link in links:
             self.assertTrue((ROOT / link).exists(), link)
+
+
+class WhoMadeThis(unittest.TestCase):
+    """The name stands in NOTICE and is the same everywhere. What is said of who did what is the same as well."""
+
+    def name(self):
+        (name,) = re.findall(r"^Copyright [0-9]{4} (\S.*\S)$", NOTICE, re.MULTILINE)
+        return name
+
+    def test_the_first_page_says_whose_it_is(self):
+        line = README.split("\n")[2]
+        self.assertTrue(line.startswith(f"Part of the public portfolio of {self.name()}. "), line)
+        self.assertIn("(https://github.com/oplf-svg)", line)
+
+    def test_the_first_page_says_who_made_what(self):
+        text = " ".join(README.split())
+        self.assertIn(
+            f"Directed and approved by {self.name()}. Code, tests and texts are written by Claude, an AI agent that proposes its changes under an "
+            "identity of its own. ", text)
+        # More than is shown.
+        self.assertNotRegex(text.lower(), "cannot approve|cannot merge|approve or merge|designed by|built by|reviewed by")
+
+    def test_who_drafts_and_who_corrects_is_the_same_everywhere(self):
+        for text in (README, PAGE, CAUSES):
+            said = re.sub(r"[\s#]+", " ", text).lower()
+            self.assertIn("drafted by claude and corrected by the owner", said)
+            self.assertNotIn("written by a person", said)
+
+    def test_the_licence_is_apache_2_letter_by_letter(self):
+        self.assertEqual(hashlib.sha256((ROOT / "LICENSE").read_bytes()).hexdigest(), "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4")
 
 
 class TableOfCauses(unittest.TestCase):
