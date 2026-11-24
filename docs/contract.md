@@ -137,7 +137,7 @@ without it.
 | 33 | An answer of the database should be lost, or a question | The line is cut at that moment and at no other |
 | 34 | A program writes, and ends | Every line has its time. How it ended is kept as a shell says it |
 | 35 | The database does not answer, or a table is missing | 0 in each sample, also while whoever asks is kept waiting. A missing table is an answer |
-| 36 | The rows at the end | All of one moment. "Overdue" is only what has been so for five seconds |
+| 36 | The rows at the end, also if a table is gone | All of one moment. "Overdue" is only what has been so for five seconds. If a table could not be read, the rows have a gap, so nobody can say that something was not there |
 | 37 | Something breaks while nobody looks | There is no recording, and it says why |
 | 38 | A cause is left out, or one of two that look the same | It is found: the table, the recorder and its four parts have to agree |
 | | **Not built yet** | |

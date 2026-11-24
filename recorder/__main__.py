@@ -46,6 +46,8 @@ def digest(recording):
                 found[f"{entry.get('kind')} {entry.get('exit')}"] += 1
             case "series" if entry.get("name") == "database_answers":
                 found[f"answers {entry.get('value')}"] += 1
+    for source, _, _ in recording.missing:
+        found[f"gap in {source}"] += 1
     return ", ".join(f"{what} {number}" for what, number in sorted(found.items()))
 
 
@@ -60,9 +62,9 @@ def record(code, seed, version, commit):
             try:
                 scene.begin()
                 cause.play(scene)
-                noted = scene.close()
+                noted, missing = scene.close()
                 # Nothing in the handles depends on the cause.
-                meta, recording = write(OUT / id, noted, random.Random(secrets.randbits(64)), commit, os.environ.get("GITHUB_SHA", "here"), seed, [id, *(program.name for program in scene.programs)], list(CAUSES))
+                meta, recording = write(OUT / id, noted, random.Random(secrets.randbits(64)), commit, os.environ.get("GITHUB_SHA", "here"), seed, [id, *(program.name for program in scene.programs)], list(CAUSES), missing)
                 sources = collections.Counter(entry.source for entry in recording.entries)
                 return {
                     "id": id, "cause": code, "pair": cause.pair, "seed": seed, "meta": meta, "seconds": round(recording.entries[-1].at / 1000), "took": round(time.monotonic() - began), "tries": why,

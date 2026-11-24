@@ -494,6 +494,7 @@ def mistakes():
     wrong("wall.numbers_in_order", "The first event is always e1", "test_30_a_number_says_nothing_about_what_came_first", ("            self._random.shuffle(numbers)\n", ""))
     wrong("write.as_it_came", "The entries are in the order in which they came", "test_30_what_was_noted_is_read_again_by_the_grader", ("sorted(behind_the_wall(noted, random), key=lambda one: one[0])", "behind_the_wall(noted, random)"))
     wrong("write.no_raw", "The lines as they were written are lost", "test_30_what_was_noted_is_read_again_by_the_grader", ("        if text is not None:\n", "        if text is None:\n"))
+    wrong("write.no_gaps", "What could not be seen was not there", "test_36_what_could_not_be_seen_is_a_gap", ("for source, since, until in missing]", "for source, since, until in ()]"))
     wrong("write.ids_in_order", "The ids can be counted up", "test_30_the_ids_are_drawn_anew", ('"".join(secrets.choice(LETTERS) for _ in range(6))', '"".join(LETTERS[len(taken) // 32 ** place % 32] for place in range(6))'))
     wrong("write.one_letter", "Every entry has the id of a log line", "test_30_what_was_noted_is_read_again_by_the_grader", ('f"{LETTER[source]}-"', '"L-"'))
     wrong("write.leaks_are_kept", "A recording may give its answer away", "test_22_what_gives_the_answer_away_is_not_written_off_as_a_recording", ("    if found := leaks.find(recording, names, causes):", "    if found := leaks.find(recording, names, causes) and []:"))
@@ -547,6 +548,8 @@ def mistakes():
     wrong("rows.overdue_for_ever", "What is done can be overdue", "test_36_the_rows_of_all_tables", ('overdue if state in ("waiting", "working") else None', "overdue"))
     wrong("rows.everything_is_text", "Everything is text", "test_36_the_rows_of_all_tables", ("    except UnicodeDecodeError:\n        return False\n", "    except UnicodeDecodeError:\n        return True\n"))
     wrong("rows.reason_as_it_is", "The words of a reason stay", "test_36_the_rows_of_all_tables", ('"reason": read_reason(reason)[0] if reason else None', '"reason": reason'))
+    wrong("rows.whole_without_a_table", "Nobody hears that a table could not be read", "test_36_a_table_that_is_not_there", ("    return found, inbox and conflicts\n", "    return found, True\n"))
+    wrong("rows.one_of_two_is_enough", "It is enough that one of the tables could be read", "test_36_a_table_that_is_not_there", ("    return found, inbox and conflicts\n", "    return found, inbox or conflicts\n"))
     wrong("rows.every_table_is_there", "A table that is missing ends the recording", "test_36_a_table_that_is_not_there", ('    return connection.execute("select to_regclass(%s) is not null", (f"public.{table}",)).fetchone()[0]', "    return True"))
 
     wrong = of("plan", "recorder")
@@ -562,11 +565,22 @@ def mistakes():
     wrong("recorder.one_cause_fewer", "A cause is never recorded", "test_38_every_cause_of_the_table_is_recorded", ('@cause("table-missing")', '@cause("tables-missing")'))
     wrong = of("webhook-platform", ".", ".commit")
     wrong("platform.any_state", "The platform can stand anywhere", "test_38_the_platform_stands_at_one_commit", ("9ff662f6fe8ca6ab4717e9a7fbc28c8e34053528", "main"))
+    wrong = of("tests", ".github/scripts", ".sh")
+    says = '  echo "Not to be merged yet: $(head -n 1 HOLD)"\n  exit 1\n'
+    wrong("scripts.no_hold", "A branch that has to wait says so and is green", "test_a_branch_that_has_to_wait_is_red", (says, says.replace("exit 1", "true")))
+    wrong("scripts.another_name", "The file has another name", "test_a_branch_that_has_to_wait_is_red", ("if [ -f HOLD ] && [ ! -L HOLD ]; then", "if [ -f WAIT ] && [ ! -L WAIT ]; then"))
+    wrong("scripts.hold_comes_first", "Nobody sees the tests of a branch that has to wait", "test_a_branch_that_has_to_wait_is_red", ("python3 --version\n", "[ ! -f HOLD ] || exit 1\npython3 --version\n"))
+    wrong("scripts.link_is_followed", "What a link leads to stands in the log", "test_what_is_not_a_plain_file_makes_it_wait_as_well", ("if [ -f HOLD ] && [ ! -L HOLD ]; then", "if [ -f HOLD ]; then"))
+    wrong("scripts.link_to_nothing", "A link that leads nowhere does not count", "test_what_is_not_a_plain_file_makes_it_wait_as_well", ("elif [ -e HOLD ] || [ -L HOLD ]; then", "elif [ -e HOLD ]; then"))
+    wrong("scripts.folder", "A folder does not count", "test_what_is_not_a_plain_file_makes_it_wait_as_well", ("elif [ -e HOLD ] || [ -L HOLD ]; then", "elif [ -L HOLD ]; then"))
+    wrong("scripts.any_hold", "Whatever starts like it makes a branch wait", "test_only_that_file_makes_it_wait", ("elif [ -e HOLD ] || [ -L HOLD ]; then", "elif ls HOLD* > /dev/null 2>&1; then"))
+    wrong("scripts.no_tests", "The tests are not run", "test_the_tests_are_run", ("python3 -B -m unittest discover --start-directory tests --top-level-directory .\n", "true\n"))
+    wrong("scripts.any_end", "A test that fails does not matter", "test_the_tests_are_run", ("--top-level-directory .\n", "--top-level-directory . || true\n"))
     return found
 
 
 def copy_to(folder):
-    for name in ("grader", "recorder", "tests", "docs", "evidence"):
+    for name in ("grader", "recorder", "tests", "docs", "evidence", ".github/scripts"):
         shutil.copytree(ROOT / name, folder / name, ignore=shutil.ignore_patterns("__pycache__"))
     for name in ("README.md", "LICENSE", "NOTICE", "webhook-platform.commit"):
         shutil.copyfile(ROOT / name, folder / name)
