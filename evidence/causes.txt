@@ -1,0 +1,143 @@
+# What went wrong can be one of these, and nothing else. The agent gets the codes and the sentences. It does not get what stands
+# below them.
+#
+# Below each cause stands what has to be shown before it may be named, drafted by Claude and corrected by the owner. "# owner" stands
+# above each line that the owner wrote or changed. So far it is an empty form. A failure can be graded as soon as its own cause has its
+# lines. Numbers are published only when all of them have. The form, with a cause that is made up:
+#
+#   kettle-boiled-dry: The kettle was on, and there was no water in it.
+#     process kind=worker exit=137 say exit
+#     then row table=inbox event=$e state=done|aside say state
+#     no log what=done event=$e
+#     3+ log what=failed event=$e
+#
+# A line is an entry that has to be shown, and "say" the fields that the answer has to say about it. "then": not before the entry of
+# the line above. "no": nothing like it may be there. "3+": so many of them. $e: the same in all lines. done|aside: one of the two.
+# "never": nothing that is recorded can prove it. All fields are in grader/fields.py.
+
+# Something outside of the program.
+
+body-too-large: A shop sends bodies that are larger than allowed, and they are refused.
+
+feed-unknown: Somebody sends to a feed that does not exist.
+
+api-ended-before-storing: A copy of the API ended after a request came and before the event was stored.
+
+api-ended-after-storing: A copy of the API ended after the event was stored and before it answered.
+
+worker-ended-before-commit: A worker ended before its work on an event was committed.
+
+worker-ended-after-commit: A worker ended after its work on an event was committed and before it said so.
+
+worker-paused-past-claim: A worker stood still for longer than its claim, and another one took the event.
+
+transaction-ended-by-database: A worker stood still in its transaction, and the database ended it.
+
+event-kills-its-worker: An event ends every worker that touches it.
+
+commit-answer-lost: The database committed, and its answer never arrived.
+
+store-answer-lost: The database stored an event, and its answer never arrived.
+
+connections-ended: Connections to the database were ended, and the database itself went on.
+
+database-restarted: The database ended and started again.
+
+database-hung: The database was there and did not answer for a while.
+
+row-held-by-somebody: Somebody else held a row that the work for one shop needs.
+
+standby-missing: Commits waited for a second database, and that did not answer.
+
+table-missing: A table is not there.
+
+right-missing: The program lacks a right in the database.
+
+event-type-unknown: A shop sends events of a type that nobody knows.
+
+event-field-wrong: A shop sends events in which a field is missing or wrong.
+
+# A mistake in the program.
+
+effect-before-mark: The program makes the effect of an event in one transaction and marks it as done in another one after that.
+
+mark-before-effect: The program marks an event as done in one transaction and makes its effect in another one after that.
+
+trouble-counted: The program counts trouble with the database as an attempt of the event.
+
+used-up-never-set-aside: The program never sets aside an event that has used up its attempts.
+
+conflict-not-kept: The program says that another body came under a used id, and does not keep it.
+
+yes-without-database: The program says yes to a shop although the event was not stored.
+
+unreadable-dropped: The program marks an event that it cannot understand as done.
+
+total-not-added: The program replaces the total of a shop by the last amount.
+
+mistake-waited-out: The program waits for the end of a mistake that no waiting can help.
+
+aside-not-said: The program sets events aside and does not say so.
+
+# Two and two of these look the same from outside. Whether they really do is checked by grader/pairs.py before any of them is used, and
+# "never" stands here for that reason only. A pair that can be told apart is taken out.
+
+secret-made-up: Somebody signs with a secret that they made up.
+  never
+
+body-changed-on-the-way: Somebody changes the body of an event on its way.
+  never
+
+secret-of-another-feed: Somebody signs with the secret of another feed.
+  never
+
+signature-cut: Somebody sends only a part of a signature.
+  never
+
+clock-behind: The clock of a shop is behind, so its events are too old.
+  never
+
+clock-ahead: The clock of a shop is ahead, so its events are from the future.
+  never
+
+signature-left-out: A shop sends events without a signature.
+  never
+
+id-not-allowed: A shop uses ids with characters that are not allowed.
+  never
+
+feed-repeats: A shop sends events twice by itself.
+  never
+
+request-replayed: Somebody recorded a request of a shop and sends it again.
+  never
+
+feed-reuses-ids: A shop uses the same id for two events.
+  never
+
+secret-in-other-hands: Somebody else has the secret of a feed and uses ids of the shop.
+  never
+
+mark-for-anybody: The program lets a worker that lost its claim mark an event as done.
+  never
+
+loss-ignored: The program lets a worker go on although it noticed that it lost its claim.
+  never
+
+body-not-json: A shop sends events that are not JSON.
+  never
+
+name-twice-in-body: A shop sends events in which a name stands twice.
+  never
+
+feed-silent: A shop has stopped sending.
+  never
+
+feed-cannot-connect: A shop sends and does not get through to us.
+  never
+
+claim-only-what-waits: The program claims only events that wait, and never one that a dead worker had.
+  never
+
+no-careful-loop: The program has no loop that looks for what a dead worker had.
+  never
