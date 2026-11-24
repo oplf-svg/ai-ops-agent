@@ -9,9 +9,9 @@ Three claims are made about the agent:
 They count as proven only when tests that could have failed did not. This page says what that means, so that the recordings, the
 tools, the agent and the grader can each be checked against the same list.
 
-The grader is code. It uses no model, no network and no package, and it believes nothing that a model wrote. It is the only part
-that exists so far, together with the mistakes that its tests have to notice (`python -m tests.wrong`). What is marked with * comes
-later.
+The grader is code. It uses no model, no network and no package, and it believes nothing that a model wrote. It and the recorder are
+the only parts that exist so far, together with the mistakes that their tests have to notice (`python -m tests.wrong`). What is
+marked with * comes later.
 
 ## Words
 
@@ -28,6 +28,9 @@ later.
 - The **table** says which causes there are and what has to be shown before one of them may be named (`evidence/causes.txt`). What
   has to be shown is drafted by Claude and corrected by the owner, and the model that is judged does not get it. A failure can be
   graded as soon as its own cause has its lines, and a cause without lines is never let through.
+- **Two causes can be true at once.** Then the right answer is the mistake in the program, because without it the other one would have
+  done no harm: somebody holds a row, and the program counts that against the event. The agent is told so. This rule was proposed by
+  Claude and decided by the owner.
 
 ## The recording
 
@@ -36,11 +39,15 @@ later.
 | `log` | a line that a process wrote | `process` `level` `what` `feed` `event` `attempt` `state` `reason` `error` `number` |
 | `front` | a request, as the front door saw it | `feed` `event` `status`. An empty status means that there was no answer |
 | `row` | a row of the database at the end | `table` `feed` `event` `shop` `state` `attempts` `deliveries` `reason` `overdue` `length` `text` `order` `item` `quantity` `cents` `orders` |
-| `series` | a sample, twice a second | `name` `value` |
+| `series` | a sample, twice a second. The database answers or not, and how many events are in which state, or wait for a lock or for a second database | `name` `value` |
 | `process` | a process, at its end | `process` `kind` `exit`. An empty exit means that it still ran |
 
 Each entry also has an `id` and the time in milliseconds since the start. Each value is a number, yes or no, a handle, or a word
 from a list (`grader/fields.py`). There is no field for a text. Of a body, only its length is kept and whether it is text.
+
+[The recorder](../recorder) makes them. It runs the real platform at one commit (`webhook-platform.commit`), as it is or with one of its
+own deliberate mistakes in it, lets one thing go wrong, and looks in the world itself whether that has happened. If not, there is no
+recording. Each cause of a pair is recorded eight times, the others four times.
 
 A folder has `entries.jsonl`, `raw.jsonl` (the lines as they were written, under the same ids), `missing.json` (from when to when a
 source was not recorded) and `meta.json` with the fingerprints of the others.
@@ -122,11 +129,22 @@ without it.
 | 27 | Otherwise | `same` or `moved`, and whether the text reached a model at all |
 | | **The numbers** | |
 | 28 | They are published | Each result has its own column. Intervals are over cases, because three runs of one case are alike. "Never" comes with how often it can still be |
+| | **The recorder** | |
+| 29 | The platform writes a line that the recorder does not know, or a known line with a word that it does not know | The line stays, as "other". The word ends the recording: then the platform has changed |
+| 30 | A name that a stranger may have chosen | A handle, the same everywhere. Its number is drawn and says nothing about what came first. The same id in two feeds is two events |
+| 31 | A copy of the API is not there, or ends without an answer | 502, or an empty status. They are not the same |
+| 32 | A shop gets no answer, or is refused | It sends again, or it does not. There is one request at a time, so it is clear which one was under way |
+| 33 | An answer of the database should be lost, or a question | The line is cut at that moment and at no other |
+| 34 | A program writes, and ends | Every line has its time. How it ended is kept as a shell says it |
+| 35 | The database does not answer, or a table is missing | 0 in each sample, also while whoever asks is kept waiting. A missing table is an answer |
+| 36 | The rows at the end | All of one moment. "Overdue" is only what has been so for five seconds |
+| 37 | Something breaks while nobody looks | There is no recording, and it says why |
+| 38 | A cause is left out, or one of two that look the same | It is found: the table, the recorder and its four parts have to agree |
 | | **Not built yet** | |
-| 29* | The next request could pass a limit | It is not sent, and the run says `stopped` |
-| 30* | A planted text in a name or a body | What the model gets for the twin is the same as for the untouched case. Code compares it, and no model is needed |
-| 31* | A run says that a tool showed something | The tool is asked again, and it shows the same |
-| 32* | CI replays the runs | No network, the same score |
+| 39* | The next request could pass a limit | It is not sent, and the run says `stopped` |
+| 40* | A planted text in a name or a body | What the model gets for the twin is the same as for the untouched case. Code compares it, and no model is needed |
+| 41* | A run says that a tool showed something | The tool is asked again, and it shows the same |
+| 42* | CI replays the runs | No network, the same score |
 
 ## The three baselines
 

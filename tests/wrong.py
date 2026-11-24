@@ -26,7 +26,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Runs all tests and says which of them looked and saw something wrong, and which did not get as far as that.
 RUN = """
-import json, sys, unittest
+import json, pathlib, sys, unittest
+
+sys.path.insert(0, ".")
 
 # The changed code does not run. Whatever else is raised is what the grader does with what the test gave it.
 NOT_EVEN_CODE = (NameError, ImportError, SyntaxError, AttributeError, TypeError)
@@ -35,14 +37,14 @@ NOT_EVEN_CODE = (NameError, ImportError, SyntaxError, AttributeError, TypeError)
 class Found(unittest.TestResult):
     def __init__(self):
         super().__init__()
-        self.failed, self.broken = set(), {}
+        self.failed, self.broken = {}, {}
 
     def note(self, test, error):
         id = getattr(test, "test_case", test).id()
         if issubclass(error[0], NOT_EVEN_CODE):
             self.broken[id] = repr(error[1])[:200]
         else:
-            self.failed.add(id)
+            self.failed.setdefault(id, []).append(f"{error[0].__name__}: {error[1]}"[:200])
 
     def addFailure(self, test, error):
         self.note(test, error)
@@ -55,8 +57,13 @@ class Found(unittest.TestResult):
 
 
 found = Found()
-unittest.defaultTestLoader.discover("tests", top_level_dir=".").run(found)
-print(json.dumps({"run": found.testsRun, "failed": sorted(found.failed), "broken": found.broken}))
+# The tests of the recorder wait for sockets and threads. Whoever changes only the grader need not wait for them, and the other way round.
+tests = unittest.TestSuite()
+for name in sorted(pathlib.Path("tests").glob("test_*.py")):
+    if (name.stem == "test_recorder") in json.loads(sys.argv[1]):
+        tests.addTests(unittest.defaultTestLoader.loadTestsFromName(f"tests.{name.stem}"))
+tests.run(found)
+print(json.dumps({"run": found.testsRun, "failed": found.failed, "broken": found.broken}))
 """
 
 
@@ -432,20 +439,24 @@ def mistakes():
     wrong("leaks.ordinary_words", "Words that the programs use themselves are in the list", "test_22_nothing_in_a_recording_that_is_right", ('WORDS = (', 'WORDS = ("done", '))
 
     wrong = of("contract", "docs", ".md")
-    wrong("contract.row_without_a_test", "The page promises something that nobody looks at", "test_every_row_has_a_test_and_every_test_a_row", ("| 29* |", "| 29 |"))
+    wrong("contract.row_without_a_test", "The page promises something that nobody looks at", "test_every_row_has_a_test_and_every_test_a_row", ("| 39* |", "| 39 |"))
     wrong("contract.field_is_missing", "The page leaves out a field", "test_the_fields_of_each_source", ("`attempts` `deliveries`", "`attempts`"))
     wrong("contract.example", "The example in the page is not in the form", "test_the_example_can_be_read", ('"value": "none", "runbook": "none"}', '"value": "none"}'))
     wrong("contract.outcome", "The page leaves out an outcome", "test_every_outcome_is_explained", ("| `broken` `refused` `cut_off`", "| `broken` `refused`"))
     wrong = of("README", ".", ".md")
-    wrong("readme.other_number", "The first page promises another number of rows", "test_the_first_page_says_the_same", ("28 things that can happen", "30 things that can happen"))
+    wrong("readme.other_number", "The first page promises another number of rows", "test_the_first_page_says_the_same", ("38 things that can happen", "40 things that can happen"))
     wrong("readme.dead_link", "A link of the first page leads nowhere", "test_the_links_of_the_first_page_lead_somewhere", ("(docs/contract.md)", "(docs/promises.md)"))
     wrong("readme.nobodys", "The first page does not say whose it is", "test_the_first_page_says_whose_it_is", ("Part of the public portfolio of ", "By "))
     wrong("readme.no_way_to_the_others", "The first page has no link to the other repositories", "test_the_first_page_says_whose_it_is", ("(https://github.com/oplf-svg)", "(https://github.com)"))
     wrong("readme.other_words", "The first page says more of the owner than is shown", "test_the_first_page_says_who_made_what", ("Directed and approved by", "Designed and built by"))
     wrong("readme.more_than_is_true", "The first page says more of the agent than is true", "test_the_first_page_says_who_made_what", ("identity of its own. What", "identity of its own. It cannot approve or merge one. What"))
-    wrong("readme.written_by_a_person", "The first page says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("What a cause needs is drafted by Claude and corrected by the owner, and", "What a cause needs is written by a person, and"))
+    wrong("readme.written_by_a_person", "The first page says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("What a cause needs and the runbooks are drafted by Claude and corrected by the owner, and", "What a cause needs is written by a person, and"))
     wrong = of("contract", "docs", ".md")
     wrong("contract.written_by_a_person", "The page says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("has to be shown is drafted by Claude and corrected by the owner", "has to be shown is written by a person"))
+    wrong("contract.whoever_decided", "Nobody knows who decided the rule for two causes", "test_the_rule_for_two_causes_stands_where_it_is_needed", ("This rule was proposed by\n  Claude and decided by the owner.", "This is a rule."))
+    wrong("contract.not_told", "The agent is not told the rule for two causes", "test_the_rule_for_two_causes_stands_where_it_is_needed", ("The agent is told so.", ""))
+    wrong = of("runbooks", "evidence", ".txt")
+    wrong("runbooks.written_by_a_person", "The list says that a person writes the runbooks", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("drafted by Claude and corrected by the owner", "written by a person"))
     wrong = of("NOTICE", ".", "")
     wrong("notice.other_name", "Two names stand in here", "test_the_first_page_says_whose_it_is", ("Copyright 2026 ", "Copyright 2026 Somebody Else and "))
     wrong = of("LICENSE", ".", "")
@@ -454,41 +465,149 @@ def mistakes():
     wrong("evidence.written_by_a_person", "The table says that a person writes what a cause needs", "test_who_drafts_and_who_corrects_is_the_same_everywhere", ("drafted by Claude and corrected by the owner", "written by a person"))
     wrong("evidence.one_cause_fewer", "A cause is missing in the table", "test_the_table_can_be_read", ("table-missing: A table is not there.\n", ""))
     wrong("evidence.example", "The example in the table cannot be read", "test_the_example_in_the_table_can_be_read", ("#     process kind=worker exit=137 say exit\n", "#     process kind=worker exit=137\n"))
+
+    wrong = of("lines", "recorder")
+    wrong("lines.loud_is_a_warning", "The worst lines are only warnings", "test_29_a_line_that_is_not_known_stays", ('"Critical": "error"', '"Critical": "warning"'))
+    wrong("lines.names_as_they_come", "A field with a sign before its name is lost", "test_29_every_line_that_the_platform_writes", ('name.lstrip("@").lower()', "name.lower()"))
+    wrong("lines.a_feed_with_spaces", "A feed that does not exist keeps its words", "test_29_every_line_that_the_platform_writes", ('    if found.get("feed") == "no such feed":\n        found["feed"] = NO_FEED\n', ""))
+    wrong("lines.already_is_stored", "What was there already counts as stored", "test_29_every_line_that_the_platform_writes", ('"Already": "already"', '"Already": "stored"'))
+    wrong("lines.not_ours_is_waiting", "What is not its own any more waits", "test_29_every_line_that_the_platform_writes", ('"no longer ours": "not_ours"', '"no longer ours": "waiting"'))
+    wrong("lines.no_code_of_a_reason", "The code behind a reason is lost", "test_29_every_line_that_the_platform_writes", ("            if code:\n                found[\"error\"] = code\n", ""))
+    wrong("lines.no_error", "The error of a line is lost", "test_29_every_line_that_the_platform_writes", ('    if problem:\n        found["error"] = error(problem)\n', ""))
+    wrong("lines.unknown_without_its_error", "A line that is not known loses its error", "test_29_a_line_that_is_not_known_stays", ('return found | {"what": "other"} | ({"error": error(problem)} if problem else {})', 'return found | {"what": "other"}'))
+    wrong("lines.last_words_are_nothing", "The last words of a process have no code", "test_29_a_line_that_is_not_known_stays", ('    return {"level": "error", "what": "other"} | ({"error": code} if code != "other" else {})', '    return {"level": "error", "what": "other"}'))
+    wrong("lines.any_json", "Whatever is JSON is taken for a line of the log", "test_29_a_line_that_is_not_known_stays", ('    if not isinstance(data, dict) or "LogLevel" not in data:', "    if not isinstance(data, dict):"))
+    wrong("lines.any_word", "A word that is not known is taken for the first one", "test_29_a_word_that_is_not_known_is_not_passed_over", ('        raise Broken(f"a word that is not known: {str(value)[:60]}")\n    return words[value]', "        return next(iter(words.values()))\n    return words[value]"))
+    wrong("lines.any_reason", "A reason that is not known counts as a step that failed", "test_29_a_word_that_is_not_known_is_not_passed_over", ('        raise Broken(f"a reason that is not known: {text[:60]}")', '        return "step_failed", None'))
+    wrong("lines.any_code", "Anything can be the code of a reason", "test_29_a_word_that_is_not_known_is_not_passed_over", (' or (code and not re.fullmatch("[0-9A-Z]{5}", code))', ""))
+    wrong("lines.code_at_the_start", "The code is found only at the start of an error", "test_29_what_can_be_said_about_an_error", ("_CODE.search(text)", "_CODE.match(text)"))
+    wrong("lines.refused_is_broken", "Nobody there is the same as a connection that broke", "test_29_what_can_be_said_about_an_error", ('"ConnectionRefused" in text or "Connection refused" in text or "SocketException (111)" in text', '"no such word" in text'))
+    wrong("lines.timeout_is_broken", "Waiting in vain is the same as a connection that broke", "test_29_what_can_be_said_about_an_error", ('"TimeoutException" in text or "timed out" in text', '"no such word" in text'))
+    wrong("lines.broken_is_other", "A connection that broke is some error", "test_29_what_can_be_said_about_an_error", ('return "broken" if "NpgsqlException" in text or "EndOfStreamException" in text else "other"', 'return "other"'))
+
+    wrong = of("write", "recorder")
+    wrong("wall.events_by_their_ids", "Two feeds with the same id are the same event", "test_30_the_same_name_is_the_same_handle_and_another_feed_is_another_event", ('("e", lambda values: (values["feed"], values["event"]))', '("e", lambda values: values["event"])'))
+    wrong("wall.orders_by_their_numbers", "Two channels with the same number have the same order", "test_30_the_same_name_is_the_same_handle_and_another_feed_is_another_event", ('("o", lambda values: (values["feed"], values["order"]))', '("o", lambda values: values["order"])'))
+    wrong("wall.items_as_they_are", "The names of items stay", "test_30_a_name_becomes_a_handle", ('    "item": ("i", lambda values: values["item"]),\n', ""))
+    wrong("wall.programs_as_they_are", "The names of programs stay", "test_30_a_name_becomes_a_handle", ('    "process": ("p", lambda values: values["process"]),\n', ""))
+    wrong("wall.empty_is_kept", "What is empty is written down", "test_30_what_is_empty_is_left_out", (" for field, value in values.items() if value is not None}, text)", " for field, value in values.items()}, text)"))
+    wrong("wall.numbers_in_order", "The first event is always e1", "test_30_a_number_says_nothing_about_what_came_first", ("            self._random.shuffle(numbers)\n", ""))
+    wrong("write.as_it_came", "The entries are in the order in which they came", "test_30_what_was_noted_is_read_again_by_the_grader", ("sorted(behind_the_wall(noted, random), key=lambda one: one[0])", "behind_the_wall(noted, random)"))
+    wrong("write.no_raw", "The lines as they were written are lost", "test_30_what_was_noted_is_read_again_by_the_grader", ("        if text is not None:\n", "        if text is None:\n"))
+    wrong("write.ids_in_order", "The ids can be counted up", "test_30_the_ids_are_drawn_anew", ('"".join(secrets.choice(LETTERS) for _ in range(6))', '"".join(LETTERS[len(taken) // 32 ** place % 32] for place in range(6))'))
+    wrong("write.one_letter", "Every entry has the id of a log line", "test_30_what_was_noted_is_read_again_by_the_grader", ('f"{LETTER[source]}-"', '"L-"'))
+    wrong("write.leaks_are_kept", "A recording may give its answer away", "test_22_what_gives_the_answer_away_is_not_written_off_as_a_recording", ("    if found := leaks.find(recording, names, causes):", "    if found := leaks.find(recording, names, causes) and []:"))
+    wrong("write.names_are_not_searched", "Nobody searches the names of the programs", "test_22_a_name_of_a_program_can_give_it_away_as_well", ("leaks.find(recording, names, causes)", "leaks.find(recording, (), causes)"))
+
+    wrong = of("front", "recorder")
+    wrong("front.nobody_is_silence", "Nobody there is the same as no answer", "test_31_no_answer_is_not_the_same_as_nobody_there", ("            return NOBODY_THERE\n", "            return None\n"))
+    wrong("front.silence_is_nobody", "No answer is the same as nobody there", "test_31_no_answer_is_not_the_same_as_nobody_there", ("        except (OSError, http.client.HTTPException):\n            return None\n", "        except (OSError, http.client.HTTPException):\n            return NOBODY_THERE\n"))
+    wrong("front.any_answer", "Every answer is a yes", "test_31_what_a_copy_answers", ("            return answer.status\n", "            return 202\n"))
+    wrong("front.goes_back_to_who_is_gone", "Who is not there is asked again and again", "test_31_it_goes_round_and_leaves_out_who_is_not_there", ("                self._copies.remove(port)\n", "                pass\n"))
+    wrong("front.always_the_first", "Only the first copy gets something to do", "test_31_it_goes_round_and_leaves_out_who_is_not_there", ("self._copies[next(self._turn) % len(self._copies)]", "self._copies[0]"))
+    wrong("front.leaves_out_the_last", "In the end there is nobody to ask", "test_31_the_last_one_is_asked_again_and_again", ("            if len(self._copies) > 1 and port in self._copies:", "            if port in self._copies:"))
+    wrong("shops.give_up", "A shop gives up after the first try", "test_32_it_sends_again_until_it_is_taken", ("        if again and status in AGAIN:", "        if again and status is True:"))
+    wrong("shops.never_give_up", "A shop sends again what was refused", "test_32_what_is_refused_is_not_sent_again", ("        if again and status in AGAIN:", "        if again and status not in (200, 202):"))
+    wrong("shops.always_again", "What should come once comes again", "test_32_what_should_come_only_once_comes_once", ("        if again and status in AGAIN:", "        if status in AGAIN:"))
+    wrong("shops.count_twice", "An event counts as often as it was sent", "test_32_it_sends_again_until_it_is_taken", ("        if not event.answers:\n", "        if event is not None:\n"))
+    wrong("shops.all_at_once", "Several requests are under way at the same time", "test_32_one_request_at_a_time", ("        self._deliver(event, make_headers, name, again)\n", "        threading.Thread(target=self._deliver, args=(event, make_headers, name, again)).start()\n"))
+    wrong("shops.no_pause", "The shops go on after the end", "test_32_one_request_at_a_time", ("    def pause(self):\n        with self._lock:\n            self._next = None\n", "    def pause(self):\n        with self._lock:\n            self._next = self._next\n"))
+    wrong("shops.one_address", "What is meant for another address comes to the right one", "test_32_where_it_goes_and_how_it_is_signed", ("self._front.send(name or event.feed.name, headers, event.body)", "self._front.send(event.feed.name, headers, event.body)"))
+    wrong("shops.name_of_a_stranger", "An address that does not exist counts as a feed", "test_32_where_it_goes_and_how_it_is_signed", ("feed=NO_FEED if name else event.feed.name", "feed=event.feed.name"))
+    wrong("shops.always_right", "What should be wrong about a request is right", "test_32_where_it_goes_and_how_it_is_signed", ("make_headers() if make_headers else signed(", "signed("))
+    wrong("shops.signed_late", "The time in the signature is another one than in the header", "test_32_where_it_goes_and_how_it_is_signed", ('f"{id}.{at}.".encode()', 'f"{id}.{at + 1}.".encode()'))
+    wrong("shops.ids_with_letters", "An id can be a word by chance", "test_22_an_id_cannot_be_a_word", ('f"evt_{random.randrange(10 ** 11, 10 ** 12)}"', 'f"evt_{random.getrandbits(48):012x}"'))
+    wrong("shops.silent", "Nobody hears that the shops send nothing any more", "test_37_trouble_in_the_shops_is_said", ('            self._trouble(f"the shops: {problem!r}")', "            self.over = problem"))
+
+    wrong = of("line", "recorder")
+    wrong("line.other_moment", "It is cut before and not after", "test_33_after_it_was_done_and_before_the_answer", ("                    if self._before:", "                    if True:"))
+    wrong("line.never_before", "It is never cut before", "test_33_before_it_is_asked", ("                    if self._before:", "                    if False:"))
+    wrong("line.every_time", "It is cut every time", "test_33_after_it_was_done_and_before_the_answer", ("            return self.seen in self._times\n", "            return True\n"))
+    wrong("line.anything", "It is cut whatever is asked", "test_33_after_it_was_done_and_before_the_answer", ("        if not self._what.search(data):\n            return False\n", ""))
+    wrong("line.answers_all_the_same", "The answer arrives", "test_33_after_it_was_done_and_before_the_answer", ("                if swallow.is_set():", "                if False:"))
+    wrong("line.not_counted", "Nobody knows how often it was cut", "test_33_after_it_was_done_and_before_the_answer", ("                if swallow.is_set():\n                    with self._lock:\n                        self.cut += 1\n", "                if swallow.is_set():\n"))
+    wrong("line.ends_with_the_first", "It ends when the database is not there once", "test_33_nobody_at_the_other_end", ("            except OSError:\n                near.close()\n                continue\n", "            except OSError:\n                return\n"))
+
+    wrong = of("programs", "recorder")
+    wrong("programs.exit_as_it_is", "Whoever was killed ended with -9", "test_34_how_it_ended", ("code if code >= 0 else 128 - code", "code"))
+    wrong("programs.every_end_is_killed", "Whoever ended was killed", "test_34_how_it_ended", ("code if code >= 0 else 128 - code", "137"))
+    wrong("programs.empty_lines", "An empty line is a line", "test_34_every_line_with_its_time", ("            if text:\n", "            if text is not None:\n"))
+    wrong("programs.no_time", "All lines have the same time", "test_34_every_line_with_its_time", ("self._heard(self, self._clock.now(), text)", "self._heard(self, 0, text)"))
+    wrong("programs.last_words_are_lost", "What a program says about its end is lost", "test_34_every_line_with_its_time", ("stderr=subprocess.STDOUT", "stderr=subprocess.DEVNULL"))
+
+    wrong = of("database", "recorder")
+    wrong("samples.wait_for_ever", "Whoever looks at the clock waits for the database", "test_35_no_answer_in_time_and_then_one", ("self._answered.wait(self._patience)", "self._answered.wait()"))
+    wrong("samples.silence_is_an_answer", "No answer is an answer", "test_35_no_answer_in_time_and_then_one", ("value=0 if answer is None else 1", "value=1"))
+    wrong("samples.nothing_is_an_answer", "Nobody there is an answer", "test_35_nobody_there", ("            answer = None\n            try:\n", "            answer = {}\n            try:\n"))
+    wrong("samples.missing_is_silence", "A missing table is no answer", "test_35_a_table_that_is_missing_is_no_silence", ("                except self._no_table:\n                    # It answers. There is only nothing to count.\n                    pass\n", "                except self._no_table:\n                    answer = None\n"))
+    wrong("samples.lost_for_ever", "A connection that was lost is asked again and again", "test_35_a_connection_that_was_lost", ("                    connection.close()\n                connection = None\n", "                    connection.close()\n"))
+    wrong("samples.locks_are_standbys", "What waits for a lock waits for a standby", "test_35_what_is_there", ('("waits_for_a_lock", "waits_for_a_standby")', '("waits_for_a_standby", "waits_for_a_lock")'))
+    wrong("samples.silent", "Nobody hears that nothing is sampled any more", "test_37_trouble_with_the_samples_is_said", ('                self._trouble(f"the samples: {problem!r}")', "                answer = {'waiting': repr(problem)} and None"))
+    wrong("rows.of_several_moments", "The tables are read one after the other", "test_36_all_of_one_moment", ('        connection.execute("set transaction isolation level repeatable read read only")\n', "        connection.execute(\"set transaction read only\")\n"))
+    wrong("rows.overdue_for_ever", "What is done can be overdue", "test_36_the_rows_of_all_tables", ('overdue if state in ("waiting", "working") else None', "overdue"))
+    wrong("rows.everything_is_text", "Everything is text", "test_36_the_rows_of_all_tables", ("    except UnicodeDecodeError:\n        return False\n", "    except UnicodeDecodeError:\n        return True\n"))
+    wrong("rows.reason_as_it_is", "The words of a reason stay", "test_36_the_rows_of_all_tables", ('"reason": read_reason(reason)[0] if reason else None', '"reason": reason'))
+    wrong("rows.every_table_is_there", "A table that is missing ends the recording", "test_36_a_table_that_is_not_there", ('    return connection.execute("select to_regclass(%s) is not null", (f"public.{table}",)).fetchone()[0]', "    return True"))
+
+    wrong = of("plan", "recorder")
+    wrong("plan.the_first_is_left_out", "A cause is in no part", "test_38_four_parts_are_everything_once", ("together()[number - 1::of]", "together()[number::of]"))
+    wrong("plan.one_too_few", "Each is recorded once less", "test_38_four_parts_are_everything_once", ("OFTEN[len(codes) > 1] + 1)", "OFTEN[len(codes) > 1])"))
+    wrong("plan.all_alike", "Those that look the same are recorded as seldom as the others", "test_38_four_parts_are_everything_once", ("OFTEN[len(codes) > 1] + 1)", "OFTEN[False] + 1)"))
+    wrong("plan.each_alone", "Two that look the same are made in different places", "test_38_two_that_look_the_same_are_made_in_the_same_place", ("found[cause.pair or code].append(code)", "found[code].append(code)"), ("OFTEN[len(codes) > 1] + 1)", "OFTEN[CAUSES[codes[0]].pair > 0] + 1)"))
+    wrong("plan.one_after_all_the_others", "All of the one are made before all of the other", "test_38_two_that_look_the_same_are_made_in_the_same_place", ("for seed in range(1, OFTEN[len(codes) > 1] + 1) for code in codes]", "for code in codes for seed in range(1, OFTEN[len(codes) > 1] + 1)]"))
+    wrong("plan.small_sample", "A sample leaves out most of them", "test_38_a_sample_is_each_cause_once", ("        return [(code, 1) for code in CAUSES]\n", "        return [(code, 1) for code in list(CAUSES)[:2]]\n"))
+    wrong("plan.unknown", "A cause that is not known is left out in silence", "test_38_a_sample_is_each_cause_once", ("    if not words or (unknown := set(words) - set(CAUSES)):", "    if not words:"))
+    wrong = of("causes", "recorder")
+    wrong("recorder.no_pair", "One of two belongs to others", "test_38_two_and_two_belong_together", ('@cause("signature-cut", pair=2)', '@cause("signature-cut", pair=3)'))
+    wrong("recorder.one_cause_fewer", "A cause is never recorded", "test_38_every_cause_of_the_table_is_recorded", ('@cause("table-missing")', '@cause("tables-missing")'))
+    wrong = of("webhook-platform", ".", ".commit")
+    wrong("platform.any_state", "The platform can stand anywhere", "test_38_the_platform_stands_at_one_commit", ("9ff662f6fe8ca6ab4717e9a7fbc28c8e34053528", "main"))
     return found
 
 
 def copy_to(folder):
-    for name in ("grader", "tests", "docs", "evidence"):
+    for name in ("grader", "recorder", "tests", "docs", "evidence"):
         shutil.copytree(ROOT / name, folder / name, ignore=shutil.ignore_patterns("__pycache__"))
-    for name in ("README.md", "LICENSE", "NOTICE"):
+    for name in ("README.md", "LICENSE", "NOTICE", "webhook-platform.commit"):
         shutil.copyfile(ROOT / name, folder / name)
 
 
-def run_in(folder):
-    done = subprocess.run([sys.executable, "-B", "-c", RUN], cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120, env=os.environ | {"PYTHONPATH": ""})
+def run_in(folder, which=(True, False)):
+    """Runs the tests of the recorder, the others, or both."""
+    done = subprocess.run([sys.executable, "-B", "-c", RUN, json.dumps(which)], cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120, env=os.environ | {"PYTHONPATH": ""})
     if done.returncode:
         raise ValueError(f"the tests did not run: {done.stderr[-500:]}")
     return json.loads(done.stdout)
 
 
+_RECORDER = set(re.findall(r"^    def (test_\w+)", (ROOT / "tests" / "test_recorder.py").read_text(encoding="utf-8"), re.MULTILINE))
+
+
 def look(wrong, folder):
-    """Why a mistake was not noticed as it should be. Empty if it was."""
+    """Why a mistake was not noticed as it should be, which is empty if it was, and the words with which its test failed."""
     path = folder / wrong.file
     before = path.read_text(encoding="utf-8")
     try:
         path.write_text(wrong.put_into(before), encoding="utf-8")
-        found = run_in(folder)
+        found = run_in(folder, [wrong.noticed_by in _RECORDER])
     except ValueError as problem:
-        return f"not valid: {problem}"
+        return f"not valid: {problem}", ""
     finally:
         path.write_text(before, encoding="utf-8")
-    failed = {id.rpartition(".")[2] for id in found["failed"]}
+    failed = {id.rpartition(".")[2]: words for id, words in found["failed"].items()}
     broken = {id.rpartition(".")[2]: why for id, why in found["broken"].items()}
     if wrong.noticed_by in broken:
-        return f"{wrong.noticed_by} broke: {broken[wrong.noticed_by]}"
+        return f"{wrong.noticed_by} broke: {broken[wrong.noticed_by]}", ""
     if wrong.noticed_by not in failed:
-        return f"{wrong.noticed_by} did not notice it. Others that did: {sorted(failed)[:5]}"
-    return ""
+        return f"{wrong.noticed_by} did not notice it. Others that did: {sorted(failed)[:5]}", ""
+    # The best of them: one that says more than that a message is another one.
+    return "", min(failed[wrong.noticed_by], key=lambda words: "does not match" in words)
+
+
+def as_code(words):
+    """So that it stands in a table as it is, whatever is in it."""
+    plain = " ".join(words.replace("`", "'").replace("|", "/").split())[:100]
+    return f"`{plain}`" if plain else ""
 
 
 def chosen(words, everything):
@@ -530,15 +649,19 @@ def main(words):
             raise SystemExit(f"The unchanged copy already fails, so nothing can be proven: {unchanged}")
         print(f"The unchanged copy passes: {unchanged['run']} tests.", flush=True)
         with concurrent.futures.ThreadPoolExecutor(jobs) as pool:
-            why = list(pool.map(one, todo))
-    missed = [f"{wrong.name}: {problem}" for wrong, problem in zip(todo, why) if problem]
+            looked = list(pool.map(one, todo))
+    missed = [f"{wrong.name}: {problem}" for wrong, (problem, _) in zip(todo, looked) if problem]
     for line in missed:
         print(line)
-    print(f"{len(todo)} of {len(everything)} mistakes, {len(missed)} of them not noticed as they should be.")
+    # Another check refuses it as well, so only the message shows that this one is missing.
+    weak = [wrong.name for wrong, (_, words) in zip(todo, looked) if "does not match" in words]
+    print(f"{len(todo)} of {len(everything)} mistakes, {len(missed)} of them not noticed as they should be, {len(weak)} noticed by a message only: {', '.join(weak) or 'none'}.")
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-        rows = "".join(f"| {wrong.what} | {'**not noticed**' if problem else wrong.noticed_by.removeprefix('test_').replace('_', ' ')} |\n" for wrong, problem in zip(todo, why))
+        rows = "".join(
+            f"| {wrong.what} | {'**not noticed**' if problem else wrong.noticed_by.removeprefix('test_').replace('_', ' ')} | {as_code(words)} |\n"
+            for wrong, (problem, words) in zip(todo, looked))
         with open(summary, "a", encoding="utf-8") as file:
-            file.write(f"### {len(todo)} mistakes, one at a time\n\n| Mistake | Noticed by |\n|---|---|\n{rows}\n")
+            file.write(f"### {len(todo)} mistakes, one at a time\n\n| Mistake | Noticed by | With the words |\n|---|---|---|\n{rows}\n")
     return 1 if missed else 0
 
 

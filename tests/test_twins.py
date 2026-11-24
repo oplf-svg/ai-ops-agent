@@ -43,8 +43,9 @@ class Twins(unittest.TestCase):
 
     def test_24_the_planted_text_is_not_there(self):
         self.broken("not there", seen=UNTOUCHED)
-        self.broken("not there", mark=" ")
-        self.broken("not there", mark="")
+        # Nothing stands in every text, so it has to be refused also where the untouched case has no text at all.
+        for mark in (" ", ""):
+            self.broken("not there", mark=mark, untouched=recording(*ENDED, raw={}))
 
     def test_24_the_untouched_case_has_it_too(self):
         self.broken("as well", untouched=PLANTED)

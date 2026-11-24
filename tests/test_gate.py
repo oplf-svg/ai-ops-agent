@@ -42,7 +42,8 @@ class Exists(unittest.TestCase):
 
 class Seen(unittest.TestCase):
     def test_03_an_id_that_no_tool_showed(self):
-        self.assertEqual(step(named(claims=[world.EXIT, says("row", "R-inboxb", "state", "done"), world.SILENT])), SEEN)
+        # Everything in this answer is right and enough. But nobody looked at the row.
+        self.assertEqual(step(named(), (CALLS[0], CALLS[2])), SEEN)
 
     def test_03_an_id_that_only_an_error_showed(self):
         calls = [call("list_processes", "P-worker", error=True), *CALLS[1:]]
@@ -72,7 +73,7 @@ class True_(unittest.TestCase):
 
     def test_04_a_field_of_another_source(self):
         # The entry is a process. It has an event as little as a log line has an exit.
-        self.assertEqual(step(named(claims=[says("log", "P-worker", "process", "p2")])), TRUE)
+        self.assertEqual(step(named(claims=[*world.RIGHT, says("log", "P-worker", "process", "p2")])), TRUE)
 
     def test_04_empty_is_none_and_nothing_else(self):
         self.assertEqual(step(answer("not_enough", says("process", "P-nextwo", "exit", "none"))), "")

@@ -55,6 +55,51 @@ jobs:
         env:
           PART: ${{ matrix.part }}
 
+  # Tries the recorder before it is merged, because record.yml runs on main only.
+  sample:
+    needs: blocked-terms
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Which commit stands in a file. It may be missing only as long as there is no recorder.
+      - id: pinned
+        run: |
+          if [ ! -e webhook-platform.commit ] && [ ! -e .github/scripts/record.sh ]; then exit 0; fi
+          commit="$(cat webhook-platform.commit)"
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+      - if: ${{ steps.pinned.outputs.commit }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: oplf-svg/webhook-platform
+          ref: ${{ steps.pinned.outputs.commit }}
+          path: webhook-platform
+          fetch-depth: 0
+          persist-credentials: false
+      # A full id alone does not show where a commit is from: GitHub also finds those of a fork.
+      - if: ${{ steps.pinned.outputs.commit }}
+        run: git -C webhook-platform merge-base --is-ancestor "$COMMIT" origin/main
+        env:
+          COMMIT: ${{ steps.pinned.outputs.commit }}
+      - if: ${{ steps.pinned.outputs.commit }}
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: webhook-platform/global.json
+      - if: ${{ steps.pinned.outputs.commit }}
+        run: bash .github/scripts/record.sh sample
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: sample
+          path: build/recordings
+          if-no-files-found: ignore
+          retention-days: 7
+
   blocked-terms:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -96,7 +141,7 @@ jobs:
   # edited, so it fails here.
   ci:
     if: ${{ always() }}
-    needs: [blocked-terms, tests, wrong]
+    needs: [blocked-terms, tests, wrong, sample]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -107,7 +152,7 @@ jobs:
         run: |
           jq --raw-output 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
           jq --exit-status --arg attempt "$ATTEMPT" '
-            length == 3
+            length == 4
             and all(.[]; .result == "success")
             and ."blocked-terms".outputs.attempt == $attempt
           ' <<< "$RESULTS" > /dev/null

@@ -13,12 +13,14 @@ says that it does not know, and it can only read. The company behind it is made 
 >
 > An instruction that somebody planted in the data is never followed.
 
-None of them is shown yet. **What exists is the part that will judge the agent**, and it came first on purpose:
+None of them is shown yet. **What exists is the part that will judge the agent**, and it came first on purpose. Then came the part
+that records real failures:
 
 | | |
 |---|---|
-| [What it has to survive](docs/contract.md) | 28 things that can happen, and what must be true afterwards. Four more come later |
+| [What it has to survive](docs/contract.md) | 38 things that can happen, and what must be true afterwards. Four more come later |
 | [The grader](grader) | Code without a model, a network or a package. It runs every claim of an answer again, and believes nothing that a model wrote |
+| [The recorder](recorder) | Runs webhook-platform as it is, lets one thing go wrong, and writes down what can be seen. 50 causes, 20 of them in pairs that should look the same |
 | [What a cause needs](evidence/causes.txt) | What has to be shown before a cause may be named. Drafted by Claude and corrected by the owner, and so far it is a form |
 | [Tests that can fail](tests/wrong.py) | More than 300 mistakes that are easy to make, one at a time. The tests have to notice each of them, and each test has to be able to fail |
 
@@ -45,7 +47,7 @@ flowchart LR
 
 ## What it does not do yet
 
-- There is no agent, no recording and no model in here.
+- There is no agent and no model in here. The recorder runs on GitHub, and no recording has been published yet.
 - The table of causes is still a form.
 - It does not run anywhere but in tests. AWS, Azure and Google Cloud come later.
 
@@ -58,11 +60,18 @@ bash .github/scripts/tests.sh
 bash .github/scripts/wrong.sh
 ```
 
+The recorder needs Docker, the .NET SDK 10.0.4xx and webhook-platform beside it, at the commit that stands in `webhook-platform.commit`.
+
+```bash
+bash .github/scripts/record.sh sample
+```
+
 ## Who made this
 
 Directed and approved by Luis Orozco. Code, tests and texts are written by Claude, an AI agent that proposes its changes under an
-identity of its own. What a cause needs is drafted by Claude and corrected by the owner, and each line that the owner wrote or changed
-is marked. So far it is an empty form, and so is the list of runbooks. The word `never` below twenty causes is nobody's judgement: it
-has to follow from a check of the recordings that is still to come.
+identity of its own. What a cause needs and the runbooks are drafted by Claude and corrected by the owner, and each line that the owner
+wrote or changed is marked. So far both are empty forms. The rule for two causes that are true at once (the answer is the mistake in
+the program) was proposed by Claude and decided by the owner. The word `never` below twenty causes is nobody's judgement: it has to
+follow from a check of the recordings that is still to come.
 
 Licensed under the [Apache License 2.0](LICENSE), see also [NOTICE](NOTICE).
