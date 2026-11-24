@@ -69,6 +69,11 @@ def signed(secret, id, body, at=None):
     return {"webhook-id": id, "webhook-timestamp": str(at), "webhook-signature": f"v1,{signature}"}
 
 
+def new_id(random):
+    """Only digits. Letters would be a word now and then, and the search for what gives an answer away would find it."""
+    return f"evt_{random.randrange(10 ** 11, 10 ** 12)}"
+
+
 class Event:
     """What a shop sends. Its name and its number are made up."""
 

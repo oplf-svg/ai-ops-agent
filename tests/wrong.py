@@ -516,6 +516,7 @@ def mistakes():
     wrong("shops.name_of_a_stranger", "An address that does not exist counts as a feed", "test_32_where_it_goes_and_how_it_is_signed", ("feed=NO_FEED if name else event.feed.name", "feed=event.feed.name"))
     wrong("shops.always_right", "What should be wrong about a request is right", "test_32_where_it_goes_and_how_it_is_signed", ("make_headers() if make_headers else signed(", "signed("))
     wrong("shops.signed_late", "The time in the signature is another one than in the header", "test_32_where_it_goes_and_how_it_is_signed", ('f"{id}.{at}.".encode()', 'f"{id}.{at + 1}.".encode()'))
+    wrong("shops.ids_with_letters", "An id can be a word by chance", "test_22_an_id_cannot_be_a_word", ('f"evt_{random.randrange(10 ** 11, 10 ** 12)}"', 'f"evt_{random.getrandbits(48):012x}"'))
     wrong("shops.silent", "Nobody hears that the shops send nothing any more", "test_37_trouble_in_the_shops_is_said", ('            self._trouble(f"the shops: {problem!r}")', "            self.over = problem"))
 
     wrong = of("line", "recorder")

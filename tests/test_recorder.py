@@ -22,7 +22,7 @@ from grader.fields import FIELDS, LETTER
 from recorder import lines
 from recorder.causes import CAUSES
 from recorder.database import OVERDUE, Samples, rows
-from recorder.front import AGAIN, NOBODY_THERE, Event, Front, Shops
+from recorder.front import AGAIN, NOBODY_THERE, Event, Front, Shops, new_id
 from recorder.line import Line
 from recorder.plan import chosen
 from recorder.programs import Clock, Program
@@ -179,8 +179,8 @@ class Api(http.server.ThreadingHTTPServer):
 
     daemon_threads = True
 
-    def __init__(self, *answers):
-        self.answers, self.asked, self.at_once, self.most = list(answers), [], 0, 0
+    def __init__(self, *answers, takes=0.01):
+        self.answers, self.asked, self.at_once, self.most, self.takes = list(answers), [], 0, 0, takes
         super().__init__(("127.0.0.1", 0), Handler)
         self.port = self.server_address[1]
         threading.Thread(target=self.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True).start()
@@ -197,7 +197,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         server.most = max(server.most, server.at_once)
         body = self.rfile.read(int(self.headers["Content-Length"]))
         server.asked.append((self.path, dict(self.headers), body))
-        time.sleep(0.01)
+        time.sleep(server.takes)
         status = server.answers.pop(0) if server.answers else 202
         server.at_once -= 1
         if status is None:
@@ -259,8 +259,8 @@ class Feed:
 
 
 class ShopsSend(unittest.TestCase):
-    def shops(self, *answers, make=None, every=(0.01, 0.02)):
-        api = Api(*answers)
+    def shops(self, *answers, make=None, every=(0.01, 0.02), takes=0.01):
+        api = Api(*answers, takes=takes)
         self.addCleanup(api.stop)
         front, self.noted, self.trouble = Front(), [], []
         front.add(api.port)
@@ -294,7 +294,8 @@ class ShopsSend(unittest.TestCase):
         self.assertEqual(len(api.asked), 1)
 
     def test_32_one_request_at_a_time(self):
-        shops, api = self.shops()
+        # An answer takes longer than it is until the next order, so whoever does not wait is seen.
+        shops, api = self.shops(takes=0.08)
         shops.begin()
         self.assertTrue(wait(lambda: len(api.asked) >= 8))
         shops.pause()
@@ -318,6 +319,10 @@ class ShopsSend(unittest.TestCase):
         self.assertEqual((body, other_headers["webhook-id"]), (b'{"n": 1}', "mine"))
         self.assertTrue(wait(lambda: len(self.noted) == 2))
         self.assertEqual(self.noted[1], ("front", {"feed": "no-such-feed", "event": "evt_2", "status": 202}))
+
+    def test_22_an_id_cannot_be_a_word(self):
+        for number in range(200):
+            self.assertRegex(new_id(random.Random(number)), r"\Aevt_[0-9]{12}\Z")
 
     def test_37_trouble_in_the_shops_is_said(self):
         def make():

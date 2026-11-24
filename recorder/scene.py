@@ -19,7 +19,7 @@ from grader import Broken
 from recorder import lines
 from recorder import build  # noqa: F401  (puts the platform's own tools on the path)
 from recorder.database import Samples, rows
-from recorder.front import Event, Front, Shops
+from recorder.front import Event, Front, Shops, new_id
 from recorder.programs import Clock, Program
 from recorder.settings import FEEDS, ITEMS, SETTINGS
 from world import Postgres, free_port, is_stopped, wait_until
@@ -157,7 +157,7 @@ class Scene:
         data = {
             "type": "order.placed", "order": f"A-{self.random.randrange(10**7, 10**8)}", "sku": item or self.random.choice(ITEMS), "quantity": self.random.randint(1, 5),
             "cents": cents or self.random.randint(100, 20_000), "placed_at": "2026-11-24T10:00:00Z"} | changed
-        return Event(feed, id or f"evt_{self.random.getrandbits(48):012x}", {name: value for name, value in data.items() if value is not None})
+        return Event(feed, id or new_id(self.random), {name: value for name, value in data.items() if value is not None})
 
     def _usual(self):
         return self.order()

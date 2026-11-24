@@ -9,7 +9,7 @@ import re
 import socket
 import time
 
-from recorder.front import Event, signed
+from recorder.front import Event, new_id, signed
 from recorder.line import Line
 from recorder.settings import BODY, ITEMS, LEASE
 
@@ -553,7 +553,7 @@ def signature_left_out(s):
 @cause("id-not-allowed", pair=4)
 def id_not_allowed(s):
     def make(feed):
-        event = s.order(feed, id=f"evt_{s.random.getrandbits(48):012x}.1")
+        event = s.order(feed, id=f"{new_id(s.random)}.1")
         return event, lambda: signed(feed.secret, event.id, event.body)
 
     _refused(s, make, 400)
