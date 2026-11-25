@@ -134,7 +134,7 @@ without it.
 | 30 | A name that a stranger may have chosen | A handle, the same everywhere. Its number is drawn and says nothing about what came first. The same id in two feeds is two events |
 | 31 | A copy of the API is not there, or ends without an answer | 502, or an empty status. They are not the same |
 | 32 | A shop gets no answer, or is refused | It sends again, or it does not. There is one request at a time, so it is clear which one was under way |
-| 33 | An answer of the database should be lost, or a question | The line is cut at that moment and at no other |
+| 33 | An answer of the database should be lost, or a question | The line is cut at that moment and at no other. What lost its answer is there already when it comes again, or there is no recording |
 | 34 | A program writes, and ends | Every line has its time. How it ended is kept as a shell says it |
 | 35 | The database does not answer, or a table is missing | 0 in each sample, also while whoever asks is kept waiting. A missing table is an answer |
 | 36 | The rows at the end, also if a table is gone | All of one moment. "Overdue" is only what has been so for five seconds. If a table could not be read, the rows have a gap, so nobody can say that something was not there |

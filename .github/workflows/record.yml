@@ -30,7 +30,7 @@ jobs:
       - id: pinned
         run: |
           commit="$(cat webhook-platform.commit)"
-          [[ "$commit" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || exit 1
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

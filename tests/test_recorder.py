@@ -14,6 +14,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
 
 from grader import Broken
@@ -407,6 +408,33 @@ class Cut(unittest.TestCase):
         # It hangs up, and it is still there for the next one.
         self.assertEqual([self.ask(line, b"x"), self.ask(line, b"x")], [[b""], [b""]])
         self.assertLess(time.monotonic() - began, 1.5)
+
+
+class LostAnswers(unittest.TestCase):
+    """One cause in a scene where nothing runs. So many answers should be lost, and this is what the shops were told."""
+
+    def recorded(self, lost, *told):
+        facts, nothing = [], lambda *_, **__: None
+        CAUSES["store-answer-lost"].play(types.SimpleNamespace(
+            random=types.SimpleNamespace(randint=lambda least, most: lost, sample=random.sample),
+            shops=types.SimpleNamespace(events=[types.SimpleNamespace(answers=answers) for answers in told]),
+            fact=lambda what, true: facts.append(bool(true)), api=nothing, open=nothing, wait=nothing, sleep=nothing, settle=nothing))
+        self.assertEqual(len(facts), 1)
+        return facts[0]
+
+    def test_33_what_lost_its_answer_was_there_already(self):
+        self.assertTrue(self.recorded(1, [202], [503, 200], [202]))
+        # The second one lost its answer again when it came again.
+        self.assertTrue(self.recorded(3, [503, 200], [202], [503, 503, 200]))
+        for what, lost, *told in (
+                ("it is stored only now", 2, [503, 200], [503, 202]),
+                ("it was stored only later", 2, [503, 200], [503, 202, 200]),
+                ("nobody ever says that it is there", 3, [503, 200], [503, 503]),
+                ("something else happened to it", 2, [503, 200], [503, None, 200]),
+                ("one fewer was lost", 2, [503, 200], [202]),
+                ("one more was lost", 1, [503, 200], [503, 200])):
+            with self.subTest(what):
+                self.assertFalse(self.recorded(lost, *told))
 
 
 class Running(unittest.TestCase):
