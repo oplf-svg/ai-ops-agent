@@ -223,7 +223,9 @@ def store_answer_lost(s):
     s.wait("the answers are lost", lambda: lines[0].cut == len(times), 60)
     s.sleep(1, 3)
     s.settle()
-    s.fact("so often it was there already", sum(event.answers == [503, 200] for event in s.shops.events) == len(times))
+    # What comes again can lose its answer again. It was stored the first time, so it ends with 200.
+    hit = [event.answers for event in s.shops.events if 503 in event.answers]
+    s.fact("so often it was there already", sum(answers.count(503) for answers in hit) == len(times) and all(answers[-1] == 200 for answers in hit))
 
 
 @cause("connections-ended")

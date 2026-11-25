@@ -6,43 +6,80 @@ apart, and the pair is thrown out.
 """
 
 import collections
+import itertools
+import re
 
 from grader import Broken
 from grader.fields import EVENT, FIELDS, ITEM, NUMBER, ORDER, PROCESS
 
-# With eight of each, one thing that is only chance separates them in one of 6435 pairs.
+# With eight of each, one thing that is only chance separates them in one of 6435 pairs. Three to five hundred different things are
+# looked at, so about one pair in fifty is thrown out by chance. It is recorded again then, with other seeds.
 EACH = 8
 _HANDLES = (EVENT, ITEM, ORDER, PROCESS)
+# Numbers that say what something is, and not how much.
+_CODES = ("status", "exit")
 
 
-def _shape(entry):
-    """What kind of entry it is: everything but its id, its time, its numbers, and which event or process it was."""
+def _shapes(entry):
+    """What kinds of entry it is: every choice of its words, so not its id, its time, its numbers, and which event or process it was.
+    All words together are not enough. The feed is drawn, so a difference is spread over the feeds, and no single one shows it."""
     kinds = FIELDS[entry.source]
-    words = sorted((field, value) for field, value in entry.values.items() if kinds[field] is not NUMBER and kinds[field] not in _HANDLES)
-    return entry.source, tuple(words), tuple(sorted(entry.values.keys()))
+    words = sorted((field, value) for field, value in entry.values.items() if field in _CODES or kinds[field] is not NUMBER and kinds[field] not in _HANDLES)
+    for size in range(len(words) + 1):
+        for some in itertools.combinations(words, size):
+            yield entry.source, some
+
+
+def _pauses(entries, field):
+    """How long it took until the same one came again."""
+    last, found = {}, []
+    for entry in entries:
+        one = entry.get(field)
+        if one in last:
+            found.append(entry.at - last[one])
+        last[one] = entry.at
+    return found
+
+
+def _first_of_each_event(entries):
+    found = {}
+    for entry in entries:
+        if entry.get("event") is not None:
+            found.setdefault(entry.get("event"), entry.at)
+    return found
 
 
 def features(recording):
     """Everything about a recording that can be put into a number."""
-    by_shape = collections.defaultdict(list)
+    by_shape, end = collections.defaultdict(list), max(entry.at for entry in recording.entries)
     for entry in recording.entries:
-        by_shape[_shape(entry)].append(entry)
+        for shape in _shapes(entry):
+            by_shape[shape].append(entry)
     found = {("gaps", source): sum(one == source for one, _, _ in recording.missing) for source in FIELDS}
     for shape, entries in by_shape.items():
-        kinds = FIELDS[shape[0]]
         found["how many", shape] = len(entries)
         found["the first", shape], found["the last", shape] = entries[0].at, entries[-1].at
-        for field in shape[2]:
-            values = [entry.get(field) for entry in entries]
-            if kinds[field] is NUMBER:
+        found["before the end", shape] = end - entries[-1].at
+        for field, kind in FIELDS[shape[0]].items():
+            some = [entry for entry in entries if entry.get(field) is not None]
+            values = [entry.get(field) for entry in some]
+            if values and kind is NUMBER:
                 found["least", shape, field], found["most", shape, field], found["sum", shape, field] = min(values), max(values), sum(values)
-            elif kinds[field] in _HANDLES:
+            elif values and kind in _HANDLES:
                 found["different ones", shape, field] = len(set(values))
                 found["of the same", shape, field] = max(collections.Counter(values).values())
-    for one in by_shape:
-        for other in by_shape:
-            if one != other:
-                found["before", one, other] = int(by_shape[one][0].at < by_shape[other][0].at)
+                if pauses := _pauses(some, field):
+                    found["soonest again", shape, field], found["latest again", shape, field] = min(pauses), max(pauses)
+    events = {shape: _first_of_each_event(entries) for shape, entries in by_shape.items() if len(shape[1]) == 1}
+    for one, other in itertools.permutations(events, 2):
+        found["before", one, other] = int(by_shape[one][0].at < by_shape[other][0].at)
+        # And of the same event: how many have the one and not the other, and how long it is from the one to the other.
+        found["without", one, other] = len(events[one].keys() - events[other].keys())
+        if both := events[one].keys() & events[other].keys():
+            waits = [events[other][event] - events[one][event] for event in both]
+            found["soonest after", one, other], found["latest after", one, other] = min(waits), max(waits)
+    for word, number in collections.Counter(word for text in recording.raw.values() for word in set(re.findall("[A-Za-z_]+", text))).items():
+        found["lines with", word] = number
     return found
 
 
